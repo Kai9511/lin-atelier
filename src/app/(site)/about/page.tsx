@@ -100,11 +100,6 @@ export default function AboutPage() {
         </p>
       </Reveal>
 
-      <Reveal className="grid gap-16 lg:grid-cols-2 lg:gap-[9vw]">
-        <EntryList title="Exhibitions" entries={site.exhibitions} />
-        <EntryList title="Awards & achievements" entries={site.awards} />
-      </Reveal>
-
     </div>
   );
 }

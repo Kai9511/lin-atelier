@@ -2,7 +2,6 @@
 import { site } from '@/lib/site';
 
 export function Footer() {
-  const ig = site.instagram;
   return (
     <footer className="mt-12 border-t border-line">
       <div className="shell grid gap-8 py-12 text-[12px] text-muted md:grid-cols-3">
@@ -29,13 +28,6 @@ export function Footer() {
           </Link>
         </nav>
         <div className="flex flex-wrap gap-x-6 gap-y-2 md:justify-end">
-          {ig.url ? (
-            <a href={ig.url} target="_blank" rel="noopener noreferrer" className="hover:text-ink">
-              Instagram {ig.handle}
-            </a>
-          ) : (
-            <span>Instagram {ig.handle}</span>
-          )}
           <Link href="/admin" className="hover:text-ink flex flex-col items-center gap-[1px]">
             <span className="text-[12px]">管理</span>
             <span className="text-[9px] uppercase tracking-label opacity-50">Admin</span>
