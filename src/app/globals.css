@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-paper font-sans font-light text-ink antialiased;
+  }
+  ::selection {
+    background: #191918;
+    color: #f7f6f2;
+  }
+  :focus-visible {
+    outline: 2px solid #191918;
+    outline-offset: 3px;
+  }
+  button {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  .shell {
+    @apply mx-auto w-full max-w-[1480px] px-5 sm:px-8 lg:px-12;
+  }
+  .eyebrow {
+    @apply text-[11px] uppercase tracking-wide2 text-muted;
+  }
+  .label {
+    @apply text-[11px] uppercase tracking-label;
+  }
+  .page-title {
+    @apply font-display text-[clamp(3rem,7vw,6.5rem)] font-normal leading-[0.95] tracking-[-0.035em];
+  }
+  .text-link {
+    @apply inline-flex items-center gap-4 text-[11px] uppercase tracking-label;
+  }
+  .text-link::after {
+    content: '→';
+    font-size: 17px;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .text-link:hover::after {
+    transform: translateX(8px);
+  }
+  .field-input {
+    @apply w-full border-0 border-b border-ink/40 bg-transparent px-0 py-3 text-[15px] outline-none transition-colors placeholder:text-muted/70 focus:border-ink;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
