@@ -103,7 +103,7 @@ export default async function HomePage() {
               </div>
               <h2 id="selected-heading" className="page-title">
                 <span className="block">近期作品</span>
-                <span className="block text-[0.5em] tracking-normal font-sans font-normal mt-1">Recent works</span>
+                <span className="block text-[0.5em] tracking-normal font-display font-normal mt-1">Recent works</span>
               </h2>
             </div>
             <Link href="/works" className="text-link shrink-0">
