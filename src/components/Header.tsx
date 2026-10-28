@@ -1,14 +1,14 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 const links = [
-  { href: '/', label: 'Home' },
-  { href: '/works', label: 'Works' },
-  { href: '/about', label: 'About' },
-  { href: '/contact', label: 'Contact' },
+  { href: '/', label: 'Home', labelCn: '首页' },
+  { href: '/works', label: 'Works', labelCn: '作品' },
+  { href: '/about', label: 'About', labelCn: '关于' },
+  { href: '/contact', label: 'Contact', labelCn: '联系' },
 ];
 
 export function Header({ name }: { name: string }) {
@@ -54,9 +54,12 @@ export function Header({ name }: { name: string }) {
                 key={l.href}
                 href={l.href}
                 aria-current={isActive(l.href) ? 'page' : undefined}
-                className="group relative py-2 text-[12px] uppercase tracking-label"
+                className="group relative py-2"
               >
-                {l.label}
+                <span className="flex flex-col items-center gap-[1px]">
+                  <span className="block text-[12px] tracking-wide">{l.labelCn}</span>
+                  <span className="block text-[9px] uppercase tracking-label">{l.label}</span>
+                </span>
                 <span
                   className={`absolute bottom-[3px] left-0 h-px bg-ink transition-all duration-500 ease-gallery ${
                     isActive(l.href) ? 'right-0' : 'right-full group-hover:right-0'
@@ -73,7 +76,17 @@ export function Header({ name }: { name: string }) {
             aria-controls="mobile-menu"
             onClick={() => setOpen((v) => !v)}
           >
-            {open ? 'Close' : 'Menu'}
+            {open ? (
+              <span className="flex flex-col items-center gap-[1px]">
+                <span className="text-[11px]">关闭</span>
+                <span className="text-[9px] uppercase tracking-label opacity-50">Close</span>
+              </span>
+            ) : (
+              <span className="flex flex-col items-center gap-[1px]">
+                <span className="text-[11px]">菜单</span>
+                <span className="text-[9px] uppercase tracking-label opacity-50">Menu</span>
+              </span>
+            )}
           </button>
         </div>
       </header>
@@ -86,9 +99,10 @@ export function Header({ name }: { name: string }) {
                 key={l.href}
                 href={l.href}
                 aria-current={isActive(l.href) ? 'page' : undefined}
-                className={`font-display text-5xl tracking-[-0.03em] ${isActive(l.href) ? 'text-ink' : 'text-ink/55'}`}
+                className={`${isActive(l.href) ? 'text-ink' : 'text-ink/55'}`}
               >
-                {l.label}
+                <span className="font-display text-5xl tracking-[-0.03em]">{l.labelCn}</span>
+                <span className="block text-[13px] uppercase tracking-label mt-1">{l.label}</span>
               </Link>
             ))}
           </nav>

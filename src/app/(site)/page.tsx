@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArtImage } from '@/components/ArtImage';
 import { Reveal } from '@/components/Reveal';
@@ -36,7 +36,10 @@ export default async function HomePage() {
     <>
       <section className="shell grid items-center gap-10 pb-16 pt-4 lg:min-h-[calc(100svh-92px)] lg:grid-cols-[0.42fr_0.58fr] lg:gap-[6vw] lg:pb-12 lg:pt-0">
         <div className="order-2 lg:order-1 lg:pl-[4vw]">
-          <p className="eyebrow mb-7">{site.tagline}</p>
+          <div className="eyebrow mb-7">
+            <span className="block">{site.taglineCn}</span>
+            <span className="block text-[10px]">{site.tagline}</span>
+          </div>
           <h1 className="font-display text-[clamp(3.75rem,8vw,7.75rem)] font-normal leading-[0.88] tracking-[-0.045em]">
             {site.name.split(' ').map((w, i) => (
               <span key={w + i} className="block">
@@ -44,9 +47,13 @@ export default async function HomePage() {
               </span>
             ))}
           </h1>
-          <p className="mt-9 max-w-[24rem] text-[15px] leading-[1.85] text-ink/75">{site.intro}</p>
+          <div className="mt-9 max-w-[24rem] text-[15px] leading-[1.85] text-ink/75">
+            <p>{site.introCn}</p>
+            <p className="mt-2 text-[13px]">{site.intro}</p>
+          </div>
           <Link href="/works" className="text-link mt-7">
-            View selected works
+            <span className="block">浏览精选作品</span>
+            <span className="block text-[11px]">View selected works</span>
           </Link>
         </div>
 
@@ -70,13 +77,17 @@ export default async function HomePage() {
                 </div>
               </div>
               <p className="label mt-4 flex justify-between text-muted">
-                <span>{hero.title}</span>
-                <span>{[hero.year, hero.medium].filter(Boolean).join(' · ')}</span>
+                <span>
+                  {hero.title_cn && <span className="block">{hero.title_cn}</span>}
+                  <span className={hero.title_cn ? 'block text-[9px]' : ''}>{hero.title}</span>
+                </span>
+                <span>{[hero.year, hero.medium_cn ?? hero.medium].filter(Boolean).join(' · ')}</span>
               </p>
             </Link>
           ) : (
-            <div className="flex h-[50svh] items-center justify-center bg-mat text-muted">
-              Works will appear here once they are published.
+            <div className="flex h-[50svh] flex-col items-center justify-center gap-2 bg-mat text-muted">
+              <span>作品发布后将在此呈现。</span>
+              <span className="text-[13px]">Works will appear here once they are published.</span>
             </div>
           )}
         </div>
@@ -86,13 +97,18 @@ export default async function HomePage() {
         <section className="shell py-24 lg:py-32" aria-labelledby="selected-heading">
           <Reveal className="mb-14 flex items-end justify-between gap-6">
             <div>
-              <p className="eyebrow mb-3">Selected works</p>
+              <div className="eyebrow mb-3">
+                <span className="block">精选作品</span>
+                <span className="block text-[9px]">Selected works</span>
+              </div>
               <h2 id="selected-heading" className="page-title">
-                Recent works
+                <span className="block">近期作品</span>
+                <span className="block text-[0.5em] tracking-normal font-sans font-normal mt-1">Recent works</span>
               </h2>
             </div>
             <Link href="/works" className="text-link shrink-0">
-              View all
+              <span className="block">浏览全部</span>
+              <span className="block text-[11px]">View all</span>
             </Link>
           </Reveal>
 
@@ -112,13 +128,21 @@ export default async function HomePage() {
                         />
                       </div>
                       <div className="pointer-events-none absolute inset-0 flex items-end bg-ink/50 p-6 opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-focus-visible:opacity-100">
-                        <span className="translate-y-3 text-[11px] uppercase tracking-label text-paper transition-transform duration-500 ease-gallery group-hover:translate-y-0">
-                          View artwork →
+                        <span className="translate-y-3 text-paper transition-transform duration-500 ease-gallery group-hover:translate-y-0">
+                          <span className="block text-[12px]">查看作品 →</span>
+                          <span className="block text-[9px] uppercase tracking-label">View artwork →</span>
                         </span>
                       </div>
                     </div>
                     <div className="flex items-baseline justify-between gap-6 pt-4">
-                      <h3 className="font-display text-[22px] leading-tight">{a.title}</h3>
+                      <h3 className="font-display text-[22px] leading-tight">
+                        {a.title_cn ? (
+                          <>
+                            <span className="block">{a.title_cn}</span>
+                            <span className="block text-[14px] font-normal tracking-normal">{a.title}</span>
+                          </>
+                        ) : a.title}
+                      </h3>
                       <p className="shrink-0 text-[11px] tracking-[0.08em] text-muted">{a.year}</p>
                     </div>
                   </Link>
@@ -130,9 +154,17 @@ export default async function HomePage() {
       )}
 
       <Reveal className="shell px-5 py-28 text-center lg:py-40">
-        <p className="eyebrow mb-8">Artist statement</p>
-        <blockquote className="mx-auto max-w-[1000px] text-balance font-display text-[clamp(1.9rem,4.3vw,4.2rem)] leading-[1.18]">
-          “{site.statement}”
+        <div className="eyebrow mb-8">
+          <span className="block">艺术家陈述</span>
+          <span className="block text-[9px]">Artist statement</span>
+        </div>
+        <blockquote className="mx-auto max-w-[1000px]">
+          <p className="text-balance font-display text-[clamp(1.9rem,4.3vw,4.2rem)] leading-[1.18]">
+            「{site.statementCn}」
+          </p>
+          <p className="mt-4 text-[clamp(1rem,2vw,1.5rem)] leading-[1.4] italic">
+            "{site.statement}"
+          </p>
         </blockquote>
       </Reveal>
     </>

@@ -13,35 +13,42 @@ function unique(values: (string | number | null)[]) {
 function Filter({
   id,
   label,
+  labelCn,
   value,
   options,
+  optionMap,
   onChange,
 }: {
   id: string;
   label: string;
+  labelCn: string;
   value: string;
   options: (string | number)[];
+  optionMap?: Record<string, string>;
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="relative">
-      <label htmlFor={id} className="sr-only">
-        {label}
+    <div>
+      <label htmlFor={id} className="mb-1 block">
+        <span className="block text-[10px] uppercase tracking-label">{labelCn}</span>
+        <span className="block text-[8px] uppercase tracking-label text-muted">{label}</span>
       </label>
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full min-w-[10rem] cursor-pointer appearance-none rounded-none border-0 border-b border-ink bg-transparent py-2.5 pl-0.5 pr-8 text-[12px] outline-none focus:border-b-2"
-      >
-        <option value="">All {label.toLowerCase()}</option>
-        {options.map((o) => (
-          <option key={o} value={String(o)}>
-            {o}
-          </option>
-        ))}
-      </select>
-      <span aria-hidden className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px]">▾</span>
+      <div className="relative">
+        <select
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full min-w-[10rem] cursor-pointer appearance-none rounded-none border-0 border-b border-ink bg-transparent py-2.5 pl-0.5 pr-8 text-[12px] outline-none focus:border-b-2"
+        >
+          <option value="">全部 / All</option>
+          {options.map((o) => (
+            <option key={o} value={String(o)}>
+              {optionMap?.[String(o)] ? `${optionMap[String(o)]} / ${o}` : o}
+            </option>
+          ))}
+        </select>
+        <span aria-hidden className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px]">▾</span>
+      </div>
     </div>
   );
 }
@@ -55,6 +62,18 @@ export function Gallery({ artworks }: { artworks: Artwork[] }) {
   const years = useMemo(() => unique(artworks.map((a) => a.year)).sort((a, b) => Number(b) - Number(a)), [artworks]);
   const media = useMemo(() => unique(artworks.map((a) => a.medium)).sort(), [artworks]);
 
+  const collectionMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    artworks.forEach((a) => { if (a.collection && a.collection_cn) map[a.collection] = a.collection_cn; });
+    return map;
+  }, [artworks]);
+
+  const mediumMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    artworks.forEach((a) => { if (a.medium && a.medium_cn) map[a.medium] = a.medium_cn; });
+    return map;
+  }, [artworks]);
+
   const filtered = artworks.filter(
     (a) =>
       (!collection || a.collection === collection) &&
@@ -67,9 +86,9 @@ export function Gallery({ artworks }: { artworks: Artwork[] }) {
   return (
     <div>
       <div className="mb-14 flex flex-wrap items-end gap-x-6 gap-y-4 border-b border-line pb-8">
-        <Filter id="f-collection" label="Collections" value={collection} options={collections} onChange={setCollection} />
-        <Filter id="f-year" label="Years" value={year} options={years} onChange={setYear} />
-        <Filter id="f-medium" label="Media" value={medium} options={media} onChange={setMedium} />
+        <Filter id="f-collection" label="Collections" labelCn="系列" value={collection} options={collections} optionMap={collectionMap} onChange={setCollection} />
+        <Filter id="f-year" label="Years" labelCn="年份" value={year} options={years} onChange={setYear} />
+        <Filter id="f-medium" label="Media" labelCn="媒材" value={medium} options={media} optionMap={mediumMap} onChange={setMedium} />
         {active && (
           <button
             type="button"
@@ -80,16 +99,21 @@ export function Gallery({ artworks }: { artworks: Artwork[] }) {
             }}
             className="label pb-2.5 underline underline-offset-4"
           >
-            Clear
+            <span className="block">清除</span>
+            <span className="block text-[9px]">Clear</span>
           </button>
         )}
         <p aria-live="polite" className="label ml-auto pb-2.5 text-muted">
-          {filtered.length} {filtered.length === 1 ? 'work' : 'works'}
+          <span className="block">{filtered.length} 件作品</span>
+          <span className="block text-[9px]">{filtered.length} {filtered.length === 1 ? 'work' : 'works'}</span>
         </p>
       </div>
 
       {filtered.length === 0 ? (
-        <p className="py-24 text-center text-muted">No works match these filters.</p>
+        <p className="py-24 text-center text-muted">
+          <span className="block">未有作品符合筛选条件。</span>
+          <span className="block text-[13px] mt-1">No works match these filters.</span>
+        </p>
       ) : (
         <div key={filterKey} className="animate-fade-in columns-1 gap-x-6 sm:columns-2 lg:columns-3 lg:gap-x-10">
           {filtered.map((a, i) => (
@@ -105,17 +129,24 @@ export function Gallery({ artworks }: { artworks: Artwork[] }) {
                   </div>
                   <div className="pointer-events-none absolute inset-0 flex flex-col justify-end gap-1 bg-ink/55 p-5 text-paper opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-focus-visible:opacity-100">
                     <span className="translate-y-3 text-[11px] uppercase tracking-label transition-transform duration-500 ease-gallery group-hover:translate-y-0 group-focus-visible:translate-y-0">
-                      {[a.medium, a.dimensions].filter(Boolean).join(' · ')}
+                      {[a.medium_cn ?? a.medium, a.dimensions].filter(Boolean).join(' · ')}
                     </span>
                     {a.collection && (
                       <span className="translate-y-3 text-[11px] uppercase tracking-label opacity-75 transition-transform delay-75 duration-500 ease-gallery group-hover:translate-y-0 group-focus-visible:translate-y-0">
-                        {a.collection}
+                        {a.collection_cn ?? a.collection}
                       </span>
                     )}
                   </div>
                 </div>
                 <div className="flex items-baseline justify-between gap-6 pt-4">
-                  <h3 className="font-display text-[22px] leading-tight">{a.title}</h3>
+                  <h3 className="font-display text-[22px] leading-tight">
+                    {a.title_cn ? (
+                      <>
+                        <span className="block">{a.title_cn}</span>
+                        <span className="block text-[14px] font-normal tracking-normal">{a.title}</span>
+                      </>
+                    ) : a.title}
+                  </h3>
                   <p className="shrink-0 text-[11px] tracking-[0.08em] text-muted">{a.year}</p>
                 </div>
               </Link>

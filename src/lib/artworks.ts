@@ -2,11 +2,20 @@ import { cache } from 'react';
 import { demoArtworks } from '@/data/demo';
 import { isSupabaseConfigured } from '@/lib/env';
 import { createPublicClient } from '@/lib/supabase/public';
+import { artworkTranslations } from '@/lib/translations';
 import type { Artwork } from '@/lib/types';
+
+function applyTranslations(artworks: Artwork[]): Artwork[] {
+  return artworks.map((a) => {
+    const t = artworkTranslations[a.slug];
+    if (!t) return a;
+    return { ...a, ...t };
+  });
+}
 
 /** Every published artwork in display order. Deduplicated per request. */
 export const getPublishedArtworks = cache(async (): Promise<Artwork[]> => {
-  if (!isSupabaseConfigured) return demoArtworks;
+  if (!isSupabaseConfigured) return applyTranslations(demoArtworks);
 
   const supabase = createPublicClient();
   const { data, error } = await supabase
@@ -20,7 +29,7 @@ export const getPublishedArtworks = cache(async (): Promise<Artwork[]> => {
     console.error('Could not load artworks:', error.message);
     return [];
   }
-  return (data ?? []) as Artwork[];
+  return applyTranslations((data ?? []) as Artwork[]);
 });
 
 export async function getArtworkNeighbours(slug: string) {

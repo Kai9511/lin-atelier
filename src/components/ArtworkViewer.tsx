@@ -67,7 +67,8 @@ export function ArtworkViewer({ artwork }: { artwork: Artwork }) {
           }`}
         />
         <span className="label absolute bottom-4 right-5 text-muted opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-focus-visible:opacity-100">
-          Full screen
+          <span className="block">全屏</span>
+          <span className="block text-[9px]">Full screen</span>
         </span>
       </button>
 
@@ -85,7 +86,8 @@ export function ArtworkViewer({ artwork }: { artwork: Artwork }) {
             onClick={close}
             className="label absolute right-5 top-5 z-10 p-2 text-paper/80 hover:text-paper"
           >
-            Close
+            <span className="block">关闭</span>
+            <span className="block text-[9px]">Close</span>
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -97,7 +99,7 @@ export function ArtworkViewer({ artwork }: { artwork: Artwork }) {
             }`}
           />
           <p className="pointer-events-none absolute bottom-5 left-0 right-0 text-center text-[11px] uppercase tracking-label text-paper/60">
-            {artwork.title}
+            {artwork.title_cn ?? artwork.title}
             {artwork.year ? ` · ${artwork.year}` : ''}
           </p>
         </div>

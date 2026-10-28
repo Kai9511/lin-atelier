@@ -2,11 +2,15 @@ export type Artwork = {
   id: string;
   slug: string;
   title: string;
+  title_cn?: string;
   year: number | null;
   medium: string | null;
+  medium_cn?: string;
   dimensions: string | null;
   description: string | null;
+  description_cn?: string;
   collection: string | null;
+  collection_cn?: string;
   image_url: string;
   thumbnail_url: string;
   /** Storage paths inside the `artworks` bucket. Null for demo images served from /public. */

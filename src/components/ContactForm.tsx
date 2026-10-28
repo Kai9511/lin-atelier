@@ -1,13 +1,13 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { isSupabaseConfigured } from '@/lib/env';
-import { inquiryTopics, site } from '@/lib/site';
+import { inquiryTopics, inquiryTopicsCn, site } from '@/lib/site';
 import { createClient } from '@/lib/supabase/client';
 
 type Status = 'idle' | 'sending' | 'sent' | 'error';
 
-export function ContactForm({ artworkTitles }: { artworkTitles: { slug: string; title: string }[] }) {
+export function ContactForm({ artworkTitles }: { artworkTitles: { slug: string; title: string; title_cn?: string }[] }) {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
 
@@ -51,8 +51,12 @@ export function ContactForm({ artworkTitles }: { artworkTitles: { slug: string; 
   if (status === 'sent') {
     return (
       <div role="status" className="animate-fade-in border-t border-ink py-10">
-        <p className="font-display text-3xl">Thank you.</p>
-        <p className="mt-3 max-w-sm leading-relaxed text-muted">
+        <p className="font-display text-3xl">谢谢您。</p>
+        <p className="font-display text-xl mt-1">Thank you.</p>
+        <p className="mt-3 max-w-sm leading-relaxed">
+          您的留言已收到，我们将尽快通过邮件回复您。
+        </p>
+        <p className="mt-1 max-w-sm text-[13px] text-muted">
           Your message has arrived. You will receive a reply by email as soon as possible.
         </p>
       </div>
@@ -63,37 +67,54 @@ export function ContactForm({ artworkTitles }: { artworkTitles: { slug: string; 
     <form onSubmit={onSubmit} className="grid gap-7" noValidate={false}>
       <div className="grid gap-7 sm:grid-cols-2">
         <div>
-          <label htmlFor="name" className="eyebrow">Name</label>
+          <label htmlFor="name" className="eyebrow">
+            <span className="block">姓名</span>
+            <span className="block text-[9px]">Name</span>
+          </label>
           <input id="name" name="name" required maxLength={200} autoComplete="name" className="field-input" />
         </div>
         <div>
-          <label htmlFor="email" className="eyebrow">Email</label>
+          <label htmlFor="email" className="eyebrow">
+            <span className="block">邮箱</span>
+            <span className="block text-[9px]">Email</span>
+          </label>
           <input id="email" name="email" type="email" required maxLength={320} autoComplete="email" className="field-input" />
         </div>
       </div>
 
       <div className="grid gap-7 sm:grid-cols-2">
         <div>
-          <label htmlFor="topic" className="eyebrow">Regarding</label>
+          <label htmlFor="topic" className="eyebrow">
+            <span className="block">关于</span>
+            <span className="block text-[9px]">Regarding</span>
+          </label>
           <select id="topic" name="topic" className="field-input cursor-pointer rounded-none">
             {inquiryTopics.map((t) => (
-              <option key={t}>{t}</option>
+              <option key={t} value={t}>{inquiryTopicsCn[t] ?? t} / {t}</option>
             ))}
           </select>
         </div>
         <div>
-          <label htmlFor="artwork" className="eyebrow">Artwork (optional)</label>
+          <label htmlFor="artwork" className="eyebrow">
+            <span className="block">作品（可选）</span>
+            <span className="block text-[9px]">Artwork (optional)</span>
+          </label>
           <select id="artwork" name="artwork" className="field-input cursor-pointer rounded-none">
-            <option value="">None in particular</option>
+            <option value="">无特定作品 / None in particular</option>
             {artworkTitles.map((a) => (
-              <option key={a.slug} value={a.slug}>{a.title}</option>
+              <option key={a.slug} value={a.slug}>
+                {a.title_cn ? `${a.title_cn} / ${a.title}` : a.title}
+              </option>
             ))}
           </select>
         </div>
       </div>
 
       <div>
-        <label htmlFor="message" className="eyebrow">Message</label>
+        <label htmlFor="message" className="eyebrow">
+          <span className="block">留言</span>
+          <span className="block text-[9px]">Message</span>
+        </label>
         <textarea id="message" name="message" required rows={5} maxLength={5000} className="field-input resize-y" />
       </div>
 
@@ -109,7 +130,17 @@ export function ContactForm({ artworkTitles }: { artworkTitles: { slug: string; 
           disabled={status === 'sending'}
           className="label border border-ink bg-ink px-8 py-4 text-paper transition-colors hover:bg-transparent hover:text-ink disabled:opacity-50"
         >
-          {status === 'sending' ? 'Sending…' : 'Send message'}
+          {status === 'sending' ? (
+            <>
+              <span className="block">发送中…</span>
+              <span className="block text-[9px]">Sending…</span>
+            </>
+          ) : (
+            <>
+              <span className="block">发送</span>
+              <span className="block text-[9px]">Send message</span>
+            </>
+          )}
         </button>
         {status === 'error' && (
           <p role="alert" className="text-[13px] text-[#8b332d]">
