@@ -1,6 +1,21 @@
 import type { Metadata, Viewport } from 'next';
+import { DM_Sans, Libre_Caslon_Display } from 'next/font/google';
 import './globals.css';
 import { site } from '@/lib/site';
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '500'],
+  variable: '--font-dm-sans',
+  display: 'swap',
+});
+
+const libreCaslon = Libre_Caslon_Display({
+  subsets: ['latin'],
+  weight: ['400'],
+  variable: '--font-libre-caslon',
+  display: 'swap',
+});
 
 const title = `${site.name} | Contemporary Watercolors`;
 
@@ -29,15 +44,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-Hans">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Libre+Caslon+Display&display=swap"
-        />
-      </head>
+    <html lang="zh-Hans" className={`${dmSans.variable} ${libreCaslon.variable}`}>
       <body>{children}</body>
     </html>
   );

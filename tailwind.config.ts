@@ -12,8 +12,8 @@ const config: Config = {
         mat: '#ebe9e3',
       },
       fontFamily: {
-        display: ['"Libre Caslon Display"', 'Georgia', 'serif'],
-        sans: ['"DM Sans"', 'system-ui', 'Arial', 'sans-serif'],
+        display: ['var(--font-libre-caslon)', 'Georgia', 'serif'],
+        sans: ['var(--font-dm-sans)', 'system-ui', 'Arial', 'sans-serif'],
       },
       letterSpacing: {
         label: '0.18em',
