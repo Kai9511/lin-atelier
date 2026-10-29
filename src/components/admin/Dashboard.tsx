@@ -283,7 +283,7 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
         };
         const { error } = await supabase.from('artworks').update(patch as Partial<Artwork>).eq('id', editing.id);
         if (error) throw error;
-        if (confirmed.length > 0) {
+        if (photos.length > 0) {
           const old = [editing.image_path, editing.thumbnail_path, editing.original_path].filter((p): p is string => Boolean(p));
           if (old.length) await bucket.remove(old);
         }
