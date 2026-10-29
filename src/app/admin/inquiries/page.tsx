@@ -22,7 +22,7 @@ export default async function InquiriesPage() {
 
   return (
     <>
-      <AdminHeader email={user.email} current="inquiries" />
+      <AdminHeader email={process.env.ADMIN_USERNAME} current="inquiries" />
       <div className="shell py-10">
         <h1 className="font-display text-4xl">
           Inquiries <span className="text-muted">({inquiries.length})</span>

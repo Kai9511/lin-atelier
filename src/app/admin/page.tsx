@@ -25,7 +25,7 @@ export default async function AdminPage() {
 
   return (
     <>
-      <AdminHeader email={user.email} current="artworks" />
+      <AdminHeader email={process.env.ADMIN_USERNAME} current="artworks" />
       <Dashboard initial={(data ?? []) as Artwork[]} loadError={error?.message} />
     </>
   );

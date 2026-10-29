@@ -13,6 +13,30 @@ async function requireUser() {
   return { supabase, user };
 }
 
+export async function loginAdmin(
+  _prevState: { error: string } | null,
+  formData: FormData,
+): Promise<{ error: string } | null> {
+  const username = String(formData.get('username') ?? '').trim();
+  const password = String(formData.get('password') ?? '');
+
+  const adminUsername = process.env.ADMIN_USERNAME ?? '';
+  const adminEmail = process.env.ADMIN_EMAIL ?? '';
+
+  if (!username || !password || username !== adminUsername || !adminEmail) {
+    return { error: 'That username and password do not match. Please try again.' };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email: adminEmail, password });
+
+  if (error) {
+    return { error: 'That username and password do not match. Please try again.' };
+  }
+
+  redirect('/admin');
+}
+
 /**
  * Called by the dashboard after every change. Public pages are cached for speed;
  * this makes a new, edited, reordered or deleted artwork show up immediately.
