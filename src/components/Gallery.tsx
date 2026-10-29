@@ -56,11 +56,9 @@ function Filter({
 export function Gallery({ artworks }: { artworks: Artwork[] }) {
   const [collection, setCollection] = useState('');
   const [year, setYear] = useState('');
-  const [medium, setMedium] = useState('');
 
   const collections = useMemo(() => unique(artworks.map((a) => a.collection)).sort(), [artworks]);
   const years = useMemo(() => unique(artworks.map((a) => a.year)).sort((a, b) => Number(b) - Number(a)), [artworks]);
-  const media = useMemo(() => unique(artworks.map((a) => a.medium)).sort(), [artworks]);
 
   const collectionMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -68,34 +66,25 @@ export function Gallery({ artworks }: { artworks: Artwork[] }) {
     return map;
   }, [artworks]);
 
-  const mediumMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    artworks.forEach((a) => { if (a.medium && a.medium_cn) map[a.medium] = a.medium_cn; });
-    return map;
-  }, [artworks]);
-
   const filtered = artworks.filter(
     (a) =>
       (!collection || a.collection === collection) &&
-      (!year || String(a.year) === year) &&
-      (!medium || a.medium === medium),
+      (!year || String(a.year) === year),
   );
-  const active = Boolean(collection || year || medium);
-  const filterKey = `${collection}|${year}|${medium}`;
+  const active = Boolean(collection || year);
+  const filterKey = `${collection}|${year}`;
 
   return (
     <div>
       <div className="mb-14 flex flex-wrap items-end gap-x-6 gap-y-4 border-b border-line pb-8">
         <Filter id="f-collection" label="Collections" labelCn="系列" value={collection} options={collections} optionMap={collectionMap} onChange={setCollection} />
         <Filter id="f-year" label="Years" labelCn="年份" value={year} options={years} onChange={setYear} />
-        <Filter id="f-medium" label="Media" labelCn="媒材" value={medium} options={media} optionMap={mediumMap} onChange={setMedium} />
         {active && (
           <button
             type="button"
             onClick={() => {
               setCollection('');
               setYear('');
-              setMedium('');
             }}
             className="label pb-2.5 underline underline-offset-4"
           >

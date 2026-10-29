@@ -7,7 +7,7 @@ import { BUCKET } from '@/lib/env';
 import { ACCEPTED_TYPES, MAX_UPLOAD_BYTES, processImage } from '@/lib/image';
 import { uniqueSlug } from '@/lib/slug';
 import { createClient } from '@/lib/supabase/client';
-import type { Artwork } from '@/lib/types';
+import type { Artwork, ExtraPhoto } from '@/lib/types';
 
 type FormState = {
   title: string;
@@ -22,6 +22,12 @@ type FormState = {
 };
 
 type Notice = { kind: 'ok' | 'error'; text: string } | null;
+
+type PhotoDraft = {
+  id: string;
+  file: File;
+  srcUrl: string;
+};
 
 const emptyForm = (): FormState => ({
   title: '',
@@ -46,8 +52,7 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
   const [items, setItems] = useState<Artwork[]>(() => [...initial].sort(byOrder));
   const [editing, setEditing] = useState<Artwork | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<PhotoDraft[]>([]);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(loadError ? { kind: 'error', text: loadError } : null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -59,15 +64,11 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
     [items],
   );
 
+  // Revoke object URLs on cleanup
   useEffect(() => {
-    if (!file) {
-      setPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
+    const urls = photos.map((p) => p.srcUrl);
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, [photos]);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -76,7 +77,7 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
   function resetForm() {
     setEditing(null);
     setForm(emptyForm());
-    setFile(null);
+    setPhotos([]);
     if (fileInput.current) fileInput.current.value = '';
   }
 
@@ -93,33 +94,93 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
       featured: a.featured,
       published: a.published,
     });
-    setFile(null);
+    setPhotos([]);
     if (fileInput.current) fileInput.current.value = '';
     setNotice(null);
     formTop.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = e.target.files?.[0] ?? null;
-    if (!picked) {
-      setFile(null);
-      return;
-    }
-    if (!ACCEPTED_TYPES.includes(picked.type)) {
-      setNotice({ kind: 'error', text: 'Please choose a JPG, PNG or WebP image.' });
+  function onPickFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? []);
+    if (!picked.length) return;
+    if (picked.some((f) => !ACCEPTED_TYPES.includes(f.type))) {
+      setNotice({ kind: 'error', text: 'Please choose JPG, PNG or WebP images.' });
       e.target.value = '';
       return;
     }
-    if (picked.size > MAX_UPLOAD_BYTES) {
-      setNotice({ kind: 'error', text: 'That file is larger than 30 MB. Please choose a smaller image.' });
+    if (picked.some((f) => f.size > MAX_UPLOAD_BYTES)) {
+      setNotice({ kind: 'error', text: 'One or more files exceed 30 MB.' });
       e.target.value = '';
       return;
     }
     setNotice(null);
-    setFile(picked);
+    setPhotos((prev) => [
+      ...prev,
+      ...picked.map((f) => ({ id: crypto.randomUUID(), file: f, srcUrl: URL.createObjectURL(f) })),
+    ]);
+    e.target.value = '';
   }
 
-  /** Re-reads the list from the database and clears the public site cache. */
+  function setPhotoAsPrimary(id: string) {
+    setPhotos((prev) => {
+      const idx = prev.findIndex((p) => p.id === id);
+      if (idx <= 0) return prev;
+      const next = [...prev];
+      const [item] = next.splice(idx, 1);
+      next.unshift(item);
+      return next;
+    });
+  }
+
+  function removePhoto(id: string) {
+    setPhotos((prev) => {
+      const p = prev.find((ph) => ph.id === id);
+      if (p) URL.revokeObjectURL(p.srcUrl);
+      return prev.filter((ph) => ph.id !== id);
+    });
+  }
+
+  async function setPrimary(ep: ExtraPhoto, index: number) {
+    if (!editing || busy) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      const existingExtras = [...((editing.extra_photos ?? []) as ExtraPhoto[])];
+      const oldPrimary: ExtraPhoto = {
+        cropped_url: editing.image_url,
+        original_url: editing.original_url ?? editing.image_url,
+        cropped_path: editing.image_path ?? '',
+        original_path: editing.original_path ?? '',
+        thumb_url: editing.thumbnail_url,
+        thumb_path: editing.thumbnail_path ?? undefined,
+        width: editing.width ?? 0,
+        height: editing.height ?? 0,
+      };
+      const newExtras = existingExtras.filter((_, i) => i !== index);
+      newExtras.push(oldPrimary);
+      const patch: Partial<Artwork> = {
+        image_url: ep.cropped_url,
+        thumbnail_url: ep.thumb_url ?? ep.cropped_url,
+        image_path: ep.cropped_path || null,
+        thumbnail_path: (ep.thumb_path ?? ep.cropped_path) || null,
+        original_url: ep.original_url,
+        original_path: ep.original_path || null,
+        width: ep.width,
+        height: ep.height,
+        extra_photos: newExtras,
+      };
+      const { error } = await supabase.from('artworks').update(patch).eq('id', editing.id);
+      if (error) throw error;
+      await reload();
+      setEditing((prev) => (prev ? { ...prev, ...patch } : null));
+      setNotice({ kind: 'ok', text: 'Primary photo updated.' });
+    } catch (err) {
+      setNotice({ kind: 'error', text: messageOf(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function reload() {
     const { data, error } = await supabase
       .from('artworks')
@@ -128,49 +189,72 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
       .order('created_at', { ascending: false });
     if (error) throw error;
     setItems((data ?? []) as Artwork[]);
-    try {
-      await revalidatePublic();
-    } catch {
-      // The change is saved; the public pages simply refresh within a minute.
-    }
+    try { await revalidatePublic(); } catch { /* public pages refresh within a minute */ }
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (busy) return;
-    if (!editing && !file) {
-      setNotice({ kind: 'error', text: 'Choose an image to upload.' });
+
+    if (!editing && photos.length === 0) {
+      setNotice({ kind: 'error', text: 'Choose at least one photo to upload.' });
       return;
     }
+
     setBusy(true);
     setNotice(null);
     const uploaded: string[] = [];
     const bucket = supabase.storage.from(BUCKET);
 
     try {
-      let imagePatch: Partial<Artwork> = {};
-      if (file) {
-        const processed = await processImage(file);
+      let primaryPatch: Partial<Artwork> = {};
+      const newExtras: ExtraPhoto[] = [];
+
+      for (let i = 0; i < photos.length; i++) {
+        const p = photos[i];
+        const processed = await processImage(p.file);
         const folder = crypto.randomUUID();
         const fullPath = `${folder}/full.${processed.ext}`;
         const thumbPath = `${folder}/thumb.${processed.ext}`;
         const opts = { contentType: processed.contentType, cacheControl: '31536000' };
 
-        const full = await bucket.upload(fullPath, processed.full, opts);
-        if (full.error) throw full.error;
-        uploaded.push(fullPath);
-        const thumb = await bucket.upload(thumbPath, processed.thumb, opts);
-        if (thumb.error) throw thumb.error;
-        uploaded.push(thumbPath);
+        const [r1, r2] = await Promise.all([
+          bucket.upload(fullPath, processed.full, opts),
+          bucket.upload(thumbPath, processed.thumb, opts),
+        ]);
+        if (r1.error) throw r1.error;
+        if (r2.error) throw r2.error;
+        uploaded.push(fullPath, thumbPath);
 
-        imagePatch = {
-          image_url: bucket.getPublicUrl(fullPath).data.publicUrl,
-          thumbnail_url: bucket.getPublicUrl(thumbPath).data.publicUrl,
-          image_path: fullPath,
-          thumbnail_path: thumbPath,
-          width: processed.width,
-          height: processed.height,
-        };
+        const fullUrl = bucket.getPublicUrl(fullPath).data.publicUrl;
+        const thumbUrl = bucket.getPublicUrl(thumbPath).data.publicUrl;
+
+        const isPrimary = i === 0 && !editing;
+        const isReplace = i === 0 && editing && photos.length > 0;
+
+        if (isPrimary || isReplace) {
+          primaryPatch = {
+            image_url: fullUrl,
+            thumbnail_url: thumbUrl,
+            image_path: fullPath,
+            thumbnail_path: thumbPath,
+            original_url: null,
+            original_path: null,
+            width: processed.width,
+            height: processed.height,
+          };
+        } else {
+          newExtras.push({
+            cropped_url: fullUrl,
+            original_url: fullUrl,
+            cropped_path: fullPath,
+            original_path: fullPath,
+            thumb_url: thumbUrl,
+            thumb_path: thumbPath,
+            width: processed.width,
+            height: processed.height,
+          });
+        }
       }
 
       const year = form.year.trim() ? Number(form.year) : null;
@@ -190,20 +274,27 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
       };
 
       if (editing) {
-        const { error } = await supabase
-          .from('artworks')
-          .update({ ...fields, ...imagePatch })
-          .eq('id', editing.id);
+        const existingExtras: ExtraPhoto[] = (editing.extra_photos ?? []) as ExtraPhoto[];
+        const mergedExtras = [...existingExtras, ...newExtras];
+        const patch = {
+          ...fields,
+          ...primaryPatch,
+          ...(newExtras.length > 0 ? { extra_photos: mergedExtras } : {}),
+        };
+        const { error } = await supabase.from('artworks').update(patch as Partial<Artwork>).eq('id', editing.id);
         if (error) throw error;
-        if (file) {
-          const old = [editing.image_path, editing.thumbnail_path].filter((p): p is string => Boolean(p));
+        if (confirmed.length > 0) {
+          const old = [editing.image_path, editing.thumbnail_path, editing.original_path].filter((p): p is string => Boolean(p));
           if (old.length) await bucket.remove(old);
         }
       } else {
         const slug = uniqueSlug(fields.title, items.map((i) => i.slug));
-        // New work goes first, ahead of everything already in the portfolio.
         const order = items.length ? Math.min(...items.map((i) => i.display_order)) - 1 : 0;
-        const { error } = await supabase.from('artworks').insert({ slug, ...fields, ...imagePatch, display_order: order });
+        const { error } = await supabase.from('artworks').insert({
+          slug, ...fields, ...primaryPatch,
+          extra_photos: newExtras,
+          display_order: order,
+        });
         if (error) throw error;
       }
 
@@ -211,10 +302,10 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
       setNotice({
         kind: 'ok',
         text: editing
-          ? `Saved “${fields.title}”.`
+          ? `Saved "${fields.title}".`
           : fields.published
-            ? `Published “${fields.title}”. It is now on the site.`
-            : `Saved “${fields.title}” as a draft.`,
+            ? `Published "${fields.title}". It is now on the site.`
+            : `Saved "${fields.title}" as a draft.`,
       });
       resetForm();
     } catch (err) {
@@ -245,8 +336,9 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
     if (target < 0 || target >= items.length || busy) return;
     const next = [...items];
     [next[index], next[target]] = [next[target], next[index]];
-    const changes = next.map((a, i) => ({ id: a.id, order: i * 10, current: a.display_order })).filter((c) => c.order !== c.current);
-
+    const changes = next
+      .map((a, i) => ({ id: a.id, order: i * 10, current: a.display_order }))
+      .filter((c) => c.order !== c.current);
     setBusy(true);
     setNotice(null);
     try {
@@ -275,11 +367,12 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
     try {
       const { error } = await supabase.from('artworks').delete().eq('id', a.id);
       if (error) throw error;
-      const paths = [a.image_path, a.thumbnail_path].filter((p): p is string => Boolean(p));
+      const extraPaths = ((a.extra_photos ?? []) as ExtraPhoto[]).flatMap((p) => [p.cropped_path, p.original_path, ...(p.thumb_path ? [p.thumb_path] : [])]);
+      const paths = [a.image_path, a.thumbnail_path, a.original_path, ...extraPaths].filter((p): p is string => Boolean(p));
       if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
       if (editing?.id === a.id) resetForm();
       await reload();
-      setNotice({ kind: 'ok', text: `Deleted “${a.title}”.` });
+      setNotice({ kind: 'ok', text: `Deleted "${a.title}".` });
     } catch (err) {
       setNotice({ kind: 'error', text: messageOf(err) });
     } finally {
@@ -287,7 +380,6 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
     }
   }
 
-  const shownImage = preview ?? editing?.thumbnail_url ?? null;
   const btn = 'label underline underline-offset-4 hover:text-muted disabled:no-underline disabled:opacity-30';
 
   return (
@@ -298,36 +390,88 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
         </h1>
 
         <form onSubmit={onSubmit} className="mt-7 grid gap-5">
+          {/* ── Photo upload ── */}
           <div>
-            <p className="eyebrow mb-2">Image {editing ? '(leave empty to keep the current one)' : ''}</p>
+            <p className="eyebrow mb-2">
+              {editing ? 'Add more photos (optional)' : 'Photos'}
+            </p>
+
+            {/* Existing photos in edit mode */}
+            {editing && (
+              <div className="mb-3 space-y-2">
+                {editing.image_url && (
+                  <div className="flex items-center gap-3 rounded border border-line bg-white/60 p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={editing.thumbnail_url} alt="" className="h-14 w-14 shrink-0 bg-mat object-contain" />
+                    <p className="min-w-0 text-[11px] text-muted">
+                      <span className="block font-medium text-ink">Current primary photo</span>
+                      {editing.original_url && <span className="block">Original stored ✓</span>}
+                    </p>
+                  </div>
+                )}
+                {((editing.extra_photos ?? []) as ExtraPhoto[]).map((ep, i) => (
+                  <div key={ep.cropped_url} className="flex items-center gap-3 rounded border border-line bg-white/60 p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={ep.thumb_url ?? ep.cropped_url} alt="" className="h-14 w-14 shrink-0 bg-mat object-contain" />
+                    <p className="min-w-0 flex-1 text-[11px] text-muted">Extra photo {i + 1}</p>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setPrimary(ep, i)}
+                      className="label shrink-0 text-[10px] text-muted underline underline-offset-2 hover:text-ink disabled:opacity-40"
+                    >
+                      Set as primary
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Photo preview list */}
+            {photos.length > 0 && (
+              <div className="mb-3 space-y-2">
+                {photos.map((p, i) => (
+                  <div key={p.id} className="flex items-center gap-3 rounded border border-line bg-white/60 p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.srcUrl} alt="" className="h-14 w-14 shrink-0 bg-mat object-cover" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-ink">
+                        {i === 0 && !editing ? 'Primary photo' : `Photo ${i + 1}`}
+                      </p>
+                    </div>
+                    {i !== 0 && !editing && (
+                      <button
+                        type="button"
+                        onClick={() => setPhotoAsPrimary(p.id)}
+                        className="label shrink-0 text-[10px] text-muted underline underline-offset-2 hover:text-ink"
+                      >
+                        Set as primary
+                      </button>
+                    )}
+                    <button type="button" onClick={() => removePhoto(p.id)} className="label text-[10px] text-muted hover:text-[#8b332d]">
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* File picker button */}
             <label
-              htmlFor="image"
-              className="flex min-h-[180px] cursor-pointer items-center justify-center overflow-hidden border border-dashed border-ink/40 bg-white/60 p-3 text-center text-[13px] text-muted transition-colors hover:border-ink"
+              htmlFor="photos"
+              className="flex min-h-[80px] cursor-pointer items-center justify-center border border-dashed border-ink/40 bg-white/60 px-4 py-3 text-center text-[13px] text-muted transition-colors hover:border-ink"
             >
-              {shownImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={shownImage} alt="Preview of the selected artwork" className="max-h-[300px] w-auto max-w-full object-contain" />
-              ) : (
-                <span>
-                  Choose a JPG, PNG or WebP image
-                  <br />
-                  <span className="text-[12px]">It is optimized automatically for the web.</span>
-                </span>
-              )}
+              {photos.length > 0 ? '+ Add more photos' : editing ? 'Choose photos to add' : 'Choose photos (one or more)'}
             </label>
             <input
               ref={fileInput}
-              id="image"
+              id="photos"
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              onChange={onPickFile}
+              multiple
+              onChange={onPickFiles}
               className="sr-only"
             />
-            {file && (
-              <p className="mt-2 text-[12px] text-muted">
-                {file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB. Preview only; nothing is published until you save.
-              </p>
-            )}
           </div>
 
           <div>
@@ -359,9 +503,7 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
               className="field-input"
             />
             <datalist id="collections">
-              {collections.map((c) => (
-                <option key={c} value={c} />
-              ))}
+              {collections.map((c) => <option key={c} value={c} />)}
             </datalist>
           </div>
           <div>
@@ -392,7 +534,7 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
             >
               {busy ? 'Working…' : editing ? 'Save changes' : form.published ? 'Publish artwork' : 'Save as draft'}
             </button>
-            {(editing || file || form.title) && (
+            {(editing || photos.length > 0 || form.title) && (
               <button type="button" onClick={resetForm} disabled={busy} className="label border border-ink px-6 py-3.5 hover:bg-ink hover:text-paper disabled:opacity-50">
                 {editing ? 'Cancel' : 'Clear'}
               </button>
@@ -451,36 +593,16 @@ export function Dashboard({ initial, loadError }: { initial: Artwork[]; loadErro
                   </p>
                 </div>
                 <div className="col-span-2 flex flex-wrap items-center gap-x-4 gap-y-2 sm:col-span-1 sm:max-w-[15rem] sm:justify-end">
-                  <button type="button" className={btn} disabled={busy || i === 0} onClick={() => move(i, -1)} aria-label={`Move ${a.title} earlier`}>
-                    ↑ Up
-                  </button>
-                  <button type="button" className={btn} disabled={busy || i === items.length - 1} onClick={() => move(i, 1)} aria-label={`Move ${a.title} later`}>
-                    ↓ Down
-                  </button>
-                  <button
-                    type="button"
-                    className={btn}
-                    disabled={busy}
-                    onClick={() => update(a.id, { featured: !a.featured }, a.featured ? `Removed “${a.title}” from the homepage.` : `“${a.title}” is featured on the homepage.`)}
-                  >
+                  <button type="button" className={btn} disabled={busy || i === 0} onClick={() => move(i, -1)} aria-label={`Move ${a.title} earlier`}>↑ Up</button>
+                  <button type="button" className={btn} disabled={busy || i === items.length - 1} onClick={() => move(i, 1)} aria-label={`Move ${a.title} later`}>↓ Down</button>
+                  <button type="button" className={btn} disabled={busy} onClick={() => update(a.id, { featured: !a.featured }, a.featured ? `Removed "${a.title}" from the homepage.` : `"${a.title}" is featured on the homepage.`)}>
                     {a.featured ? 'Unfeature' : 'Feature'}
                   </button>
-                  <button
-                    type="button"
-                    className={btn}
-                    disabled={busy}
-                    onClick={() => update(a.id, { published: !a.published }, a.published ? `“${a.title}” is now hidden.` : `“${a.title}” is now published.`)}
-                  >
+                  <button type="button" className={btn} disabled={busy} onClick={() => update(a.id, { published: !a.published }, a.published ? `"${a.title}" is now hidden.` : `"${a.title}" is now published.`)}>
                     {a.published ? 'Unpublish' : 'Publish'}
                   </button>
-                  <button type="button" className={btn} disabled={busy} onClick={() => startEdit(a)}>
-                    Edit
-                  </button>
-                  {a.published && (
-                    <Link href={`/works/${a.slug}`} target="_blank" className={btn}>
-                      View ↗
-                    </Link>
-                  )}
+                  <button type="button" className={btn} disabled={busy} onClick={() => startEdit(a)}>Edit</button>
+                  {a.published && <Link href={`/works/${a.slug}`} target="_blank" className={btn}>View ↗</Link>}
                   <button
                     type="button"
                     disabled={busy}

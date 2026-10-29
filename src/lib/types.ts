@@ -1,3 +1,14 @@
+export type ExtraPhoto = {
+  cropped_url: string;
+  original_url: string;
+  cropped_path: string;
+  original_path: string;
+  thumb_url?: string;
+  thumb_path?: string;
+  width: number;
+  height: number;
+};
+
 export type Artwork = {
   id: string;
   slug: string;
@@ -16,6 +27,9 @@ export type Artwork = {
   /** Storage paths inside the `artworks` bucket. Null for demo images served from /public. */
   image_path: string | null;
   thumbnail_path: string | null;
+  original_url?: string | null;
+  original_path?: string | null;
+  extra_photos?: ExtraPhoto[] | null;
   width: number | null;
   height: number | null;
   alt_text: string | null;

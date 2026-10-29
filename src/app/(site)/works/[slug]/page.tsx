@@ -1,7 +1,7 @@
 ﻿import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArtworkViewer } from '@/components/ArtworkViewer';
+import { ArtworkViewer, ExtraPhotosSection } from '@/components/ArtworkViewer';
 import { artAlt } from '@/lib/alt';
 import { getArtworkNeighbours, getPublishedArtworks } from '@/lib/artworks';
 import { site } from '@/lib/site';
@@ -134,6 +134,8 @@ export default async function ArtworkPage({ params }: Params) {
           </Link>
         </div>
       </div>
+
+      <ExtraPhotosSection artwork={a} />
 
       {previous && next && (
         <nav aria-label="More artworks" className="mt-20 grid grid-cols-2 border-t border-line lg:mt-28">

@@ -14,7 +14,6 @@ export const metadata: Metadata = {
 
 export default async function ContactPage() {
   const artworks = await getPublishedArtworks();
-  const ig = site.instagram;
 
   return (
     <div className="shell grid gap-16 pb-16 pt-12 lg:grid-cols-2 lg:gap-[8vw] lg:pt-20">
@@ -38,18 +37,6 @@ export default async function ContactPage() {
               <a href={`mailto:${site.email}`} className="border-b border-ink font-display text-2xl sm:text-3xl">
                 {site.email}
               </a>
-            </dd>
-          </div>
-          <div>
-            <dt className="eyebrow mb-1">Instagram</dt>
-            <dd>
-              {ig.url ? (
-                <a href={ig.url} target="_blank" rel="noopener noreferrer" className="border-b border-ink">
-                  {ig.handle}
-                </a>
-              ) : (
-                ig.handle
-              )}
             </dd>
           </div>
           <div>
